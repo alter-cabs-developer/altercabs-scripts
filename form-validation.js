@@ -87,3 +87,44 @@ window.addEventListener("load", () => {
   });
   validateFormFields();
 });
+
+document.getElementById("rideForm").addEventListener("submit", function (e) {
+  e.preventDefault();
+  if (!validateFormFields()) return;
+
+  const data = {
+    name: document.getElementById('name').value.trim(),
+    phone: document.getElementById('phone').value.trim(),
+    pickup: document.getElementById('pickup').value.trim(),
+    drop: document.getElementById('drop').value.trim(),
+    date: document.getElementById('date').value.trim(),
+    time: document.getElementById('time').value.trim(),
+    distance: pickupCoords && dropCoords
+      ? haversineDistance(pickupCoords.lat(), pickupCoords.lng(), dropCoords.lat(), dropCoords.lng()).toFixed(2)
+      : null
+  };
+
+  // ✅ Console output to debug
+  console.log("Submitting booking data:", data);
+
+  fetch("/submit/booking", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  })
+  .then(res => res.json())
+  .then(response => {
+    const feedback = document.getElementById("global-feedback");
+    if (response.status === 'success') {
+      feedback.textContent = "✅ Ride request submitted. Our team will contact you soon.";
+      document.getElementById("rideForm").reset();
+      document.getElementById("submitBtn").disabled = true;
+    } else {
+      feedback.textContent = "❌ Failed to submit booking. Please try again.";
+    }
+  })
+  .catch(() => {
+    const feedback = document.getElementById("global-feedback");
+    feedback.textContent = "❌ Network error. Please check your connection.";
+  });
+});
