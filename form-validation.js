@@ -3,25 +3,62 @@ function haversineDistance(lat1, lng1, lat2, lng2) {
   const R = 6371;
   const dLat = toRad(lat2 - lat1);
   const dLng = toRad(lng2 - lng1);
-  const a = Math.sin(dLat/2)**2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng/2)**2;
+  const a = Math.sin(dLat / 2) ** 2 +
+            Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
+            Math.sin(dLng / 2) ** 2;
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   return R * c;
 }
 
-function validateFormFields() {
-  const fields = ['pickup', 'drop', 'date', 'time', 'phone', 'name'];
-  const feedback = document.getElementById('feedback');
-  const button = document.getElementById('submitBtn');
-  const allFilled = fields.every(id => document.getElementById(id)?.value.trim() !== '');
+function setError(fieldId, message) {
+  const field = document.getElementById(fieldId);
+  const error = document.getElementById(`error-${fieldId}`);
+  if (field && error) {
+    field.classList.add("invalid");
+    error.textContent = message;
+  }
+}
 
-  if (!allFilled) {
-    feedback.textContent = "Please fill all fields to proceed.";
+function clearError(fieldId) {
+  const field = document.getElementById(fieldId);
+  const error = document.getElementById(`error-${fieldId}`);
+  if (field && error) {
+    field.classList.remove("invalid");
+    error.textContent = "";
+  }
+}
+
+function validateFormFields() {
+  const button = document.getElementById('submitBtn');
+  const feedback = document.getElementById('global-feedback');
+  let isValid = true;
+
+  const fields = [
+    { id: 'pickup', msg: 'Pickup location is required.' },
+    { id: 'drop', msg: 'Drop location is required.' },
+    { id: 'date', msg: 'Please select a date.' },
+    { id: 'time', msg: 'Please select a time.' },
+    { id: 'phone', msg: 'Enter a valid phone number.' },
+    { id: 'name', msg: 'Enter your name.' }
+  ];
+
+  fields.forEach(f => {
+    const value = document.getElementById(f.id)?.value.trim();
+    if (!value) {
+      setError(f.id, f.msg);
+      isValid = false;
+    } else {
+      clearError(f.id);
+    }
+  });
+
+  if (!isValid) {
+    feedback.textContent = "Please fix the highlighted fields.";
     button.disabled = true;
     return false;
-  } else {
-    feedback.textContent = "";
   }
 
+  // Geofencing
   if (pickupCoords && dropCoords) {
     const distance = haversineDistance(
       pickupCoords.lat(), pickupCoords.lng(),
@@ -34,39 +71,13 @@ function validateFormFields() {
     }
   }
 
-  button.disabled = false;
   feedback.textContent = "";
+  button.disabled = false;
   return true;
 }
 
-function useCurrentLocation() {
-  const feedback = document.getElementById('feedback');
-  if (navigator.geolocation) {
-    navigator.geolocation.getCurrentPosition(position => {
-      const lat = position.coords.latitude;
-      const lng = position.coords.longitude;
-      const latlng = { lat, lng };
-
-      const geocoder = new google.maps.Geocoder();
-      geocoder.geocode({ location: latlng }, (results, status) => {
-        if (status === "OK" && results[0]) {
-          document.getElementById('pickup').value = results[0].formatted_address;
-          pickupCoords = new google.maps.LatLng(lat, lng);
-          checkGeofence();
-        } else {
-          feedback.textContent = "Unable to retrieve location address.";
-        }
-      });
-    }, () => {
-      feedback.textContent = "Location access denied.";
-    });
-  } else {
-    feedback.textContent = "Geolocation is not supported.";
-  }
-}
-
 function checkGeofence() {
-  validateFormFields(); // includes distance check
+  validateFormFields();
 }
 
 window.addEventListener("load", () => {
@@ -74,6 +85,5 @@ window.addEventListener("load", () => {
     const field = document.getElementById(id);
     if (field) field.addEventListener('input', validateFormFields);
   });
-
-  validateFormFields(); // initial state
+  validateFormFields();
 });
