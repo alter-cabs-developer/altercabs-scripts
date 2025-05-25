@@ -1,10 +1,3 @@
-function validateFormFields() {
-  const required = ['pickup', 'drop', 'date', 'time', 'phone', 'name'];
-  const allFilled = required.every(id => document.getElementById(id)?.value.trim() !== '');
-  const button = document.getElementById('submitBtn');
-  if (button) button.disabled = !allFilled;
-}
-
 function haversineDistance(lat1, lng1, lat2, lng2) {
   const toRad = deg => deg * Math.PI / 180;
   const R = 6371;
@@ -15,24 +8,39 @@ function haversineDistance(lat1, lng1, lat2, lng2) {
   return R * c;
 }
 
-function checkGeofence() {
+function validateFormFields() {
+  const fields = ['pickup', 'drop', 'date', 'time', 'phone', 'name'];
+  const feedback = document.getElementById('feedback');
   const button = document.getElementById('submitBtn');
+  const allFilled = fields.every(id => document.getElementById(id)?.value.trim() !== '');
+
+  if (!allFilled) {
+    feedback.textContent = "Please fill all fields to proceed.";
+    button.disabled = true;
+    return false;
+  } else {
+    feedback.textContent = "";
+  }
+
   if (pickupCoords && dropCoords) {
     const distance = haversineDistance(
       pickupCoords.lat(), pickupCoords.lng(),
       dropCoords.lat(), dropCoords.lng()
     );
-
     if (distance > 50) {
-      alert("Pickup and drop locations must be within 50 km.");
-      if (button) button.disabled = true;
-    } else {
-      validateFormFields();
+      feedback.textContent = "Drop location is too far. We serve within 50 km.";
+      button.disabled = true;
+      return false;
     }
   }
+
+  button.disabled = false;
+  feedback.textContent = "";
+  return true;
 }
 
 function useCurrentLocation() {
+  const feedback = document.getElementById('feedback');
   if (navigator.geolocation) {
     navigator.geolocation.getCurrentPosition(position => {
       const lat = position.coords.latitude;
@@ -46,15 +54,19 @@ function useCurrentLocation() {
           pickupCoords = new google.maps.LatLng(lat, lng);
           checkGeofence();
         } else {
-          alert("Unable to retrieve address from location.");
+          feedback.textContent = "Unable to retrieve location address.";
         }
       });
     }, () => {
-      alert("Location permission denied.");
+      feedback.textContent = "Location access denied.";
     });
   } else {
-    alert("Geolocation is not supported.");
+    feedback.textContent = "Geolocation is not supported.";
   }
+}
+
+function checkGeofence() {
+  validateFormFields(); // includes distance check
 }
 
 window.addEventListener("load", () => {
@@ -62,5 +74,6 @@ window.addEventListener("load", () => {
     const field = document.getElementById(id);
     if (field) field.addEventListener('input', validateFormFields);
   });
-  validateFormFields();
+
+  validateFormFields(); // initial state
 });
